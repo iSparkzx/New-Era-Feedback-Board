@@ -1,12 +1,15 @@
 //! Sets up the Supabase project for the New Era Feedback Board through the
 //! Supabase Management API (https://api.supabase.com).
 //!
-//!   cargo run -p provision -- up       create or reuse the project, apply SQL, configure sign-in
+//!   cargo run -p provision -- up       create or reuse the project, apply SQL, configure access
+//!   cargo run -p provision -- codes    set the team code and admin code
 //!   cargo run -p provision -- sql FILE run a SQL file on the project named in .env.local
 //!   cargo run -p provision -- status   show project health and item count
 //!
 //! The access token comes from SUPABASE_ACCESS_TOKEN or ~/.supabase/access-token.
 //! It is never printed. Secret and service-role keys are never read or written.
+//! Board codes are stored in the database only as hashes; a copy for the
+//! owner goes to ~/.supabase/<ref>.board-codes.txt, outside the repo.
 
 use std::fs;
 use std::io::Write as _;
@@ -26,10 +29,22 @@ const DEFAULT_SITE: &str = "https://isparkzx.github.io/New-Era-Feedback-Board/";
 const LOCAL_DEV: &str = "http://localhost:5173/";
 const GITHUB_REPO: &str = "iSparkzx/New-Era-Feedback-Board";
 
-const EMAIL_SUBJECT: &str = "Your sign-in link for the New Era Feedback Board";
-const EMAIL_BODY: &str = r#"<h2>Sign in to the New Era Feedback Board</h2>
-<p><a href="{{ .ConfirmationURL }}">Sign in</a></p>
-<p>This link works once and expires in 1 hour. If you did not ask to sign in, you can ignore this email.</p>"#;
+// Short, distinct words for readable codes (128 words = 7 bits each).
+const WORDS: [&str; 128] = [
+    "amber", "anchor", "apple", "arrow", "aspen", "badge", "banner", "basin", "beacon", "birch",
+    "blaze", "bloom", "border", "branch", "breeze", "brick", "bridge", "brook", "button", "cabin",
+    "canyon", "carbon", "cedar", "chalk", "cherry", "cider", "cloud", "clover", "cobalt", "comet",
+    "copper", "coral", "cotton", "crane", "creek", "crest", "crown", "delta", "denim", "dune",
+    "eagle", "ember", "falcon", "fern", "field", "flint", "forest", "frost", "garnet", "glacier",
+    "granite", "harbor", "hazel", "heron", "hollow", "honey", "indigo", "island", "ivory", "jasper",
+    "juniper", "kettle", "lagoon", "lantern", "laurel", "lemon", "linen", "lotus", "maple", "marble",
+    "meadow", "mesa", "mint", "nickel", "north", "oak", "ocean", "olive", "orbit", "orchid",
+    "otter", "pebble", "pepper", "pine", "planet", "plaza", "prairie", "quartz", "quill", "raven",
+    "reef", "ridge", "river", "robin", "rocket", "saddle", "sage", "sapphire", "satin", "shore",
+    "silver", "slate", "spruce", "stitch", "stone", "summit", "thread", "thunder", "timber", "topaz",
+    "trail", "tulip", "tundra", "valley", "velvet", "violet", "walnut", "willow", "winter", "zephyr",
+    "anvil", "bramble", "canvas", "dusk", "fable", "gravel", "harvest", "needle",
+];
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -40,6 +55,7 @@ fn main() {
         Some("sql") => sql_command(&args[1..]),
         Some("status") => status(),
         Some("list") => list(),
+        Some("codes") => codes(&args[1..]),
         _ => {
             eprintln!("{}", USAGE);
             std::process::exit(2);
@@ -57,6 +73,9 @@ const USAGE: &str = "Usage:
                (--ref sets up an existing project and renames it to NAME)
   provision sql FILE            run a SQL file on the project in .env.local
   provision sql -c \"SQL\"        run one SQL statement
+  provision codes [--team CODE] [--admin CODE]
+                                set the board codes (random words if not given);
+                                everyone has to enter the new team code
   provision status              health and counts for the project in .env.local
   provision list                your organizations and projects (read only)";
 
@@ -178,6 +197,17 @@ impl Api {
             false,
         )
     }
+
+    /// A query with $1, $2, … parameters. Errors never echo the reply, since
+    /// it could repeat a parameter (for example a board code).
+    fn query_with(&self, project: &str, sql: &str, params: &[&str]) -> Result<Value> {
+        self.call(
+            Method::POST,
+            &format!("/v1/projects/{project}/database/query"),
+            Some(&json!({ "query": sql, "parameters": params })),
+            true,
+        )
+    }
 }
 
 fn short(text: &str) -> String {
@@ -230,6 +260,11 @@ fn up(o: &Options) -> Result<()> {
         api.query(&project, &schema)?;
         println!("  Applied supabase/schema.sql");
     }
+    // Migrations are written to be safe to run again, so apply all of them every time.
+    for path in migrations(&root)? {
+        api.query(&project, &read(&path)?)?;
+        println!("  Applied {}", path.strip_prefix(&root).unwrap_or(&path).display());
+    }
 
     step("Loading the 16 imported items");
     match &seed {
@@ -241,43 +276,29 @@ fn up(o: &Options) -> Result<()> {
     let count = api.query(&project, "select count(*)::int as n from public.items")?;
     println!("  items: {}", count.pointer("/0/n").and_then(Value::as_i64).unwrap_or(-1));
 
-    step("Configuring sign-in");
+    step("Configuring access");
     let allow = format!("{}**,{}**", o.site_url, LOCAL_DEV);
-    let auth_path = format!("/v1/projects/{project}/config/auth");
     // Error replies here are validation messages about what we sent; safe to show.
     api.call(
         Method::PATCH,
-        &auth_path,
+        &format!("/v1/projects/{project}/config/auth"),
         Some(&json!({
             "site_url": o.site_url,
             "uri_allow_list": allow,
             "disable_signup": false,
-            "external_email_enabled": true,
-            "external_anonymous_users_enabled": false,
-            "mailer_autoconfirm": false,
-            "mailer_otp_exp": 3600,
+            // No email sign-in: visitors get a silent anonymous session and enter the team code.
+            "external_email_enabled": false,
+            "external_anonymous_users_enabled": true,
+            // A whole office can share one IP address; allow plenty of first visits per hour.
+            "rate_limit_anonymous_users": 300,
         })),
         false,
     )?;
     println!("  Site URL: {}", o.site_url);
-    println!("  Redirects allowed: {allow}");
-    println!("  Email confirmation: on");
-
-    // Supabase only allows custom email wording once custom SMTP is set up.
-    let wording = api.call(
-        Method::PATCH,
-        &auth_path,
-        Some(&json!({
-            "mailer_subjects_magic_link": EMAIL_SUBJECT,
-            "mailer_subjects_confirmation": EMAIL_SUBJECT,
-            "mailer_templates_magic_link_content": EMAIL_BODY,
-            "mailer_templates_confirmation_content": EMAIL_BODY,
-        })),
-        false,
-    );
-    match wording {
-        Ok(_) => println!("  Sign-in email wording: set"),
-        Err(_) => println!("  Sign-in email wording: left as Supabase's default (needs custom SMTP; run `up` again after setting it up)"),
+    println!("  Email sign-in: off; anonymous sessions: on (team code required to see anything)");
+    let has_codes = api.query(&project, "select exists (select 1 from public.board_codes) as set")?;
+    if has_codes.pointer("/0/set").and_then(Value::as_bool) != Some(true) {
+        println!("  No board codes yet. Run: npm run provision -- codes");
     }
 
     step("Reading the public (publishable) key");
@@ -305,11 +326,77 @@ fn up(o: &Options) -> Result<()> {
     println!("\nDone.");
     println!("  Project:   {url}");
     println!("  Dashboard: https://supabase.com/dashboard/project/{project}");
-    println!("\nStill to do by hand:");
-    println!("  - Set up custom SMTP (Authentication > Emails). Until then Supabase only emails members");
-    println!("    of your Supabase organization, at most 2 emails an hour.");
-    println!("  - Add admins:  cargo run -p provision -- sql -c \"insert into public.admins (email) values ('name@worldemblem.com')\"");
     Ok(())
+}
+
+/// supabase/migrations/*.sql in name order.
+fn migrations(root: &Path) -> Result<Vec<PathBuf>> {
+    let dir = root.join("supabase/migrations");
+    let Ok(entries) = fs::read_dir(&dir) else {
+        return Ok(Vec::new());
+    };
+    let mut files: Vec<PathBuf> = entries
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.extension().is_some_and(|x| x == "sql"))
+        .collect();
+    files.sort();
+    Ok(files)
+}
+
+// ---------------------------------------------------------------------------
+// codes
+// ---------------------------------------------------------------------------
+
+fn codes(args: &[String]) -> Result<()> {
+    let (mut team, mut admin) = (None, None);
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        let mut value = || it.next().cloned().ok_or(format!("{a} needs a value"));
+        match a.as_str() {
+            "--team" => team = Some(value()?),
+            "--admin" => admin = Some(value()?),
+            other => return Err(format!("unknown option {other}\n\n{USAGE}")),
+        }
+    }
+    let team = match team {
+        Some(t) => t,
+        None => random_code(3)?,
+    };
+    let admin = match admin {
+        Some(a) => a,
+        None => random_code(5)?,
+    };
+
+    let api = Api::new()?;
+    let project = project_from_env()?;
+    api.query_with(&project, "select public.set_board_codes($1, $2)", &[&team, &admin])
+        .map_err(|e| format!("{e}\nThe team code needs 8+ characters, the admin code 12+, and they must differ."))?;
+
+    let path = home()?.join(".supabase").join(format!("{project}.board-codes.txt"));
+    fs::write(
+        &path,
+        format!(
+            "New Era Feedback Board codes\n\
+             Team code (share with the team):  {team}\n\
+             Admin code (only for people who move and delete):  {admin}\n\
+             Changing the codes makes everyone enter the new team code once.\n"
+        ),
+    )
+    .map_err(|e| format!("Codes were set, but saving the copy failed: {e}"))?;
+    println!("Codes set. Everyone enters the new team code once.");
+    println!("Your copy: {}", path.display());
+    Ok(())
+}
+
+/// Random words joined by dashes, plus two digits, e.g. "maple-thread-river-42".
+fn random_code(words: usize) -> Result<String> {
+    let mut buf = [0u8; 16];
+    getrandom::fill(&mut buf).map_err(|e| format!("No secure random source: {e}"))?;
+    // 256 is a multiple of 128, so `b % 128` keeps every word equally likely.
+    let mut parts: Vec<String> = buf[..words].iter().map(|b| WORDS[*b as usize % WORDS.len()].to_string()).collect();
+    let digit = buf[words..].iter().find(|b| **b < 250).copied().unwrap_or(0);
+    parts.push(format!("{}", 10 + digit % 90));
+    Ok(parts.join("-"))
 }
 
 /// Checks the project exists and renames it to `name` (a failed rename is only a warning).
@@ -563,15 +650,20 @@ fn status() -> Result<()> {
     let n = api.query(
         &project,
         "select (select count(*) from public.items)::int as items, \
-                (select count(*) from public.admins)::int as admins, \
-                (select string_agg(domain, ', ') from public.allowed_domains) as domains",
+                (select count(*) from public.members)::int as members, \
+                (select count(*) from public.members where is_admin)::int as admins, \
+                (select max(updated_at)::text from public.board_codes) as codes_set",
     )?;
     println!(
-        "  items: {}  admins: {}  allowed domains: {}",
+        "  items: {}  people with the team code: {}  with admin tools on: {}",
         n.pointer("/0/items").unwrap_or(&Value::Null),
+        n.pointer("/0/members").unwrap_or(&Value::Null),
         n.pointer("/0/admins").unwrap_or(&Value::Null),
-        n.pointer("/0/domains").and_then(Value::as_str).unwrap_or("")
     );
+    match n.pointer("/0/codes_set").and_then(Value::as_str) {
+        Some(at) => println!("  board codes last set: {at}"),
+        None => println!("  board codes: not set (run: npm run provision -- codes)"),
+    }
     Ok(())
 }
 
@@ -635,6 +727,25 @@ mod tests {
         assert!(pick_org(&two, None).is_err());
         assert_eq!(str_of(&pick_org(&two, Some("b")).unwrap(), "slug"), "b");
         assert!(pick_org(&two, Some("c")).is_err());
+    }
+
+    #[test]
+    fn codes_are_words_and_digits() {
+        let c = random_code(3).unwrap();
+        let parts: Vec<&str> = c.split('-').collect();
+        assert_eq!(parts.len(), 4, "{c}");
+        assert!(parts[..3].iter().all(|w| WORDS.contains(w)), "{c}");
+        let n: u32 = parts[3].parse().unwrap();
+        assert!((10..=99).contains(&n), "{c}");
+        assert!(random_code(5).unwrap().chars().count() >= 12, "admin codes meet the 12-character minimum");
+    }
+
+    #[test]
+    fn word_list_has_no_repeats() {
+        let mut w = WORDS.to_vec();
+        w.sort();
+        w.dedup();
+        assert_eq!(w.len(), WORDS.len());
     }
 
     #[test]

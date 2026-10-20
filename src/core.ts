@@ -28,8 +28,6 @@ export const formatRef = (n: number): string => wasm.formatRef(n);
 
 export const fullName = (first: string, last: string): string => wasm.fullName(first, last);
 
-export const looksLikeEmail = (s: string): boolean => wasm.looksLikeEmail(s);
-
 /** The link if it is safe to use as an href (http or https only). */
 export const safeHref = (raw: string | null | undefined): string | undefined =>
   raw ? wasm.safeHref(raw) : undefined;

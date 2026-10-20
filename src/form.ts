@@ -139,7 +139,7 @@ async function onSubmit(e: SubmitEvent): Promise<void> {
   } catch (err) {
     msg.textContent = friendly(
       err,
-      "Your account can't submit to this board. Sign in with your World Emblem email.",
+      "You can't submit right now. Reload the page and enter the team code again.",
       'Could not submit. Try again.',
     );
   }

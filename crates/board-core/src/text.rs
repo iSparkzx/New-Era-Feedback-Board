@@ -45,34 +45,9 @@ pub fn safe_href(raw: &str) -> Option<String> {
     Some(s.to_string())
 }
 
-/// A light check for the sign-in box: one `@`, a name before it, and a dotted
-/// domain after it. The sign-in email itself is the real test.
-pub fn looks_like_email(raw: &str) -> bool {
-    let s = raw.trim();
-    let Some((name, domain)) = s.split_once('@') else {
-        return false;
-    };
-    !name.is_empty()
-        && !domain.contains('@')
-        && !s.chars().any(|c| c.is_whitespace() || c.is_control())
-        && domain.split('.').count() >= 2
-        && domain.split('.').all(|part| !part.is_empty())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn emails() {
-        assert!(looks_like_email(" pat.lee@worldemblem.com "));
-        assert!(!looks_like_email("pat"));
-        assert!(!looks_like_email("@worldemblem.com"));
-        assert!(!looks_like_email("a@worldemblem"));
-        assert!(!looks_like_email("a@@worldemblem.com"));
-        assert!(!looks_like_email("a b@worldemblem.com"));
-        assert!(!looks_like_email("a@worldemblem..com"));
-    }
 
     #[test]
     fn refs_have_at_least_two_digits() {

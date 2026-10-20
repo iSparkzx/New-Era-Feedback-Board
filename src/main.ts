@@ -1,9 +1,10 @@
-// Starts the page: loads the Rust core, follows sign-in state, and switches
-// between the sign-in screen, the "not allowed" screen, and the board.
+// Starts the page: loads the Rust core, then shows either the team-code
+// screen or the board, depending on what the database says this browser's
+// session may do.
 
 import './styles.css';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
-import { cleanUrl, initSignIn, resetSignIn, takeLinkError } from './auth';
+import { closeAdminForm, initAccess, joining, resetCodeScreen, updateAdminUi } from './access';
 import { loadCore } from './core';
 import { initCopy } from './copy';
 import { startCountdown } from './countdown';
@@ -18,55 +19,39 @@ import { clearSigned } from './screenshots';
 import { resetState, setRenderHook, st } from './state';
 import { configured, sb } from './supabase';
 
-type Screen = 'signin' | 'notAllowed' | 'board';
+type Screen = 'code' | 'board';
 
 function show(screen: Screen): void {
-  $('signin').hidden = screen !== 'signin';
-  $('notAllowed').hidden = screen !== 'notAllowed';
+  $('codeScreen').hidden = screen !== 'code';
   $('board').hidden = screen !== 'board';
   $('lede').hidden = screen !== 'board';
   $('toggleForm').hidden = screen !== 'board';
-  $('acct').hidden = screen === 'signin';
-  $('whoami').textContent = st.email ? `Signed in as ${st.email} ·` : '';
+  $('acct').hidden = screen !== 'board';
+  if (screen === 'code') $('tc-code').focus();
 }
 
 function teardown(): void {
   unsubscribe();
   if (drawerOpen()) closeDrawer();
   resetForm();
+  closeAdminForm();
   resetState();
   clearSigned();
-  resetSignIn();
+  resetCodeScreen();
   banner('');
   $<HTMLButtonElement>('toggleForm').disabled = true;
 }
 
-let linkError = '';
 let seq = 0;
 
-async function onAuth(event: AuthChangeEvent, session: Session | null): Promise<void> {
-  const uid = session?.user.id ?? '';
-  if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') return;
-  if (uid && uid === st.uid) return; // same person, nothing to redo
+/** Opens the board if this session has entered the team code; otherwise asks for it. */
+async function openBoard(): Promise<void> {
   const mine = ++seq;
-  teardown();
-
-  if (!session) {
-    show('signin');
-    if (linkError) banner(linkError);
-    linkError = '';
-    return;
-  }
-
-  cleanUrl();
-  st.uid = uid;
-  st.email = session.user.email ?? '';
   try {
     const allowed = await checkAllowed();
     if (mine !== seq) return;
     if (!allowed) {
-      $('naEmail').textContent = st.email;
-      show('notAllowed');
+      show('code');
       return;
     }
     show('board');
@@ -75,12 +60,32 @@ async function onAuth(event: AuthChangeEvent, session: Session | null): Promise<
     await loadAll();
     if (mine !== seq) return;
     $<HTMLButtonElement>('toggleForm').disabled = false;
+    updateAdminUi();
     render();
   } catch (err) {
     if (mine !== seq) return;
-    show('board');
-    banner(friendly(err, "Your account can't open this board.", 'Could not load the board. Reload the page to try again.'));
+    show('code');
+    banner(friendly(err, 'Enter the team code again.', 'Could not load the board. Reload the page to try again.'));
   }
+}
+
+async function onAuth(event: AuthChangeEvent, session: Session | null): Promise<void> {
+  if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') return;
+  const uid = session?.user.id ?? '';
+  if (uid && uid === st.uid) return; // same session, nothing to redo
+  if (joining && uid) {
+    // A session made while checking a team code; the code form opens the board itself.
+    st.uid = uid;
+    return;
+  }
+  seq++;
+  teardown();
+  if (!session) {
+    show('code');
+    return;
+  }
+  st.uid = uid;
+  await openBoard();
 }
 
 function initFilters(): void {
@@ -108,7 +113,10 @@ async function boot(): Promise<void> {
   initForm();
   initCopy();
   initFilters();
-  initSignIn();
+  initAccess({
+    onJoined: () => void openBoard(),
+    onAdminChange: () => render(),
+  });
   setRenderHook(render);
 
   try {
@@ -121,8 +129,8 @@ async function boot(): Promise<void> {
   startCountdown();
 
   if (!configured) {
-    show('signin');
-    $<HTMLButtonElement>('si-btn').disabled = true;
+    show('code');
+    $<HTMLButtonElement>('tc-btn').disabled = true;
     banner("This board isn't connected to its database yet.");
     return;
   }
@@ -134,7 +142,6 @@ async function boot(): Promise<void> {
   });
   setInterval(refreshShots, 5 * 60 * 1000);
 
-  linkError = takeLinkError();
   // Supabase asks that no Supabase calls run inside this callback, so defer the work.
   sb().auth.onAuthStateChange((event, session) => {
     setTimeout(() => void onAuth(event, session), 0);

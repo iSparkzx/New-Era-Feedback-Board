@@ -130,7 +130,7 @@ function deleteControl(d: Item): HTMLElement {
       } catch (err) {
         yes.disabled = false;
         no.disabled = false;
-        banner(friendly(err, 'Only board admins can delete items.', 'Could not delete that item. Try again in a moment.'));
+        banner(friendly(err, 'Turn on admin tools to delete items.', 'Could not delete that item. Try again in a moment.'));
       }
     });
     no.addEventListener('click', () => {

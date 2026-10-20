@@ -1,6 +1,6 @@
 # New Era Feedback Board
 
-Internal board where World Emblem team leads log feedback, bugs, and process issues about the New Era website. Hosted on GitHub Pages; data, sign-in, and screenshots live in Supabase.
+Internal board where World Emblem team leads log feedback, bugs, and process issues about the New Era website. Hosted on GitHub Pages; data and screenshots live in Supabase. People get in with a shared team code (no accounts, no emails).
 
 - `CLAUDE.md`: standing rules (fields, statuses, permissions, page behavior)
 - `PLAN.md` (build phases) and `reference/board-current.html` (the claude.ai prototype) are kept with the planning files, not in this public repo. Copy them into a local clone if you need them; git ignores them.
@@ -9,9 +9,9 @@ Internal board where World Emblem team leads log feedback, bugs, and process iss
 
 | Part | Where | What it does |
 |---|---|---|
-| Page | `index.html`, `src/*.ts`, `src/styles.css` | DOM, sign-in, Supabase calls, live updates |
+| Page | `index.html`, `src/*.ts`, `src/styles.css` | DOM, team code, Supabase calls, live updates |
 | Board logic | `crates/board-core` (Rust → WebAssembly) | Form rules, filters, grouping, ref numbers, copy-as-text, countdown |
-| Database rules | `supabase/schema.sql` | Tables, row level security, triggers, screenshot bucket |
+| Database rules | `supabase/schema.sql`, `supabase/migrations/` | Tables, row level security, triggers, screenshot bucket, team and admin codes |
 | Setup tool | `crates/provision` (Rust CLI) | Creates and configures the Supabase project through the Management API |
 | Deploy | `.github/workflows/deploy.yml` | Test, build, check for secrets, publish to Pages on every push to `main` |
 
@@ -24,9 +24,10 @@ Internal board where World Emblem team leads log feedback, bugs, and process iss
    npm install
    ```
 2. Create a Supabase personal access token at https://supabase.com/dashboard/account/tokens and save it as one line in `~/.supabase/access-token` (Windows: `C:\Users\<you>\.supabase\access-token`). Never commit it.
-3. Create the project, load the schema and the 16 imported items, configure sign-in, and set the GitHub secrets:
+3. Create the project, load the schema and the 16 imported items, configure access, set the GitHub secrets, then set the codes:
    ```sh
    npm run provision -- up --github-secrets
+   npm run provision -- codes
    ```
    It is safe to run again; it reuses the project and skips the schema if it is already there. To set up an existing project instead, add `--ref <project ref>`.
 
@@ -35,14 +36,12 @@ Internal board where World Emblem team leads log feedback, bugs, and process iss
 
 ## Managing access
 
-Admins (can move and delete) and allowed email domains are database rows:
-
-```sh
-npm run provision -- sql -c "insert into public.admins (email) values ('name@worldemblem.com')"
-npm run provision -- sql -c "insert into public.allowed_domains (domain) values ('herospride.com')"
-npm run provision -- status
-```
-
-## Sign-in emails
-
-Until custom SMTP is set up (Supabase dashboard > Authentication > Emails), Supabase only sends sign-in emails to members of your Supabase organization, at most 2 an hour. Set up SMTP before inviting the team.
+- **Team code**: lets a device see the board and submit. Share it in the Teams chat. People enter it once per device.
+- **Admin code**: also lets a device move and delete. Give it only to the people who sort items. "Turn off" in the header ends admin mode on that device.
+- Codes are not case-sensitive. The database stores only hashes; your copy is in `~/.supabase/<project ref>.board-codes.txt`.
+- New codes (for example, if a code gets shared too widely). Everyone then enters the new team code once:
+  ```sh
+  npm run provision -- codes                                # random words
+  npm run provision -- codes --team "..." --admin "..."     # your own (8+ and 12+ characters)
+  ```
+- `npm run provision -- status` shows how many devices have the team code and how many have admin tools on.

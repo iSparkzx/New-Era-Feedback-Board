@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex, nofollow">
 <title>New Era Feedback Board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,40 +19,36 @@
       <button id="toggleForm" class="primary" type="button" hidden disabled>Add feedback</button>
     </div>
     <p class="lede" id="lede" hidden>Log feedback, bugs, and process issues for the new site in one place. Everyone can see what has been submitted, so check the list before adding a duplicate.</p>
-    <div class="acct" id="acct" hidden><span id="whoami"></span> <button class="link" type="button" id="signOut">Sign out</button></div>
+    <div class="acct" id="acct" hidden><span id="adminState"></span> <button class="link" type="button" id="adminToggle">Admin tools</button></div>
+    <form id="adminForm" class="panel" hidden novalidate>
+      <div class="field">
+        <label for="ad-code">Admin code</label>
+        <input id="ad-code" type="password" autocomplete="off" autocapitalize="none" spellcheck="false">
+        <span class="err" id="e-admin"></span>
+      </div>
+      <div class="formfoot">
+        <button class="primary" type="submit" id="ad-btn">Turn on admin tools</button>
+        <button type="button" id="ad-cancel">Cancel</button>
+      </div>
+    </form>
     <hr class="stitch">
   </header>
 
-  <!-- Signed out -->
-  <section id="signin" class="panel" hidden>
-    <div id="signinStart">
-      <h2>Sign in</h2>
-      <p class="hint">Use your World Emblem email. We'll email you a link to sign in.</p>
-      <form id="signinForm" novalidate>
-        <div class="field">
-          <label for="si-email">Work email</label>
-          <input id="si-email" type="email" autocomplete="email" inputmode="email" placeholder="name@worldemblem.com">
-          <span class="err" id="e-email"></span>
-        </div>
-        <div class="formfoot">
-          <button class="primary" type="submit" id="si-btn">Send sign-in link</button>
-          <span id="si-msg" role="status"></span>
-        </div>
-      </form>
-    </div>
-    <div id="signinSent" hidden>
-      <h2>Check your email</h2>
-      <p>We sent a sign-in link to <b id="sentTo"></b>. Open it to sign in. The link works once and expires in 1 hour.</p>
-      <p class="hint">No email after a few minutes? Check your junk folder, then try again.</p>
-      <div class="formfoot"><button type="button" id="si-again">Send another link</button></div>
-    </div>
-  </section>
-
-  <!-- Signed in, but this email can't use the board -->
-  <section id="notAllowed" class="panel" hidden>
-    <h2>This email can't use the board</h2>
-    <p><b id="naEmail"></b> isn't on the list of allowed emails. Sign out and sign in with your World Emblem email, or ask Carlos Mitchell to add you.</p>
-    <div class="formfoot"><button type="button" id="naSignOut">Sign out</button></div>
+  <!-- No team code entered yet on this device -->
+  <section id="codeScreen" class="panel" hidden>
+    <h2>Enter the team code</h2>
+    <p class="hint">Ask your team lead for the code, or find it in the New Era Teams chat. You only need to enter it once on this device.</p>
+    <form id="codeForm" novalidate>
+      <div class="field">
+        <label for="tc-code">Team code</label>
+        <input id="tc-code" type="text" autocomplete="off" autocapitalize="none" spellcheck="false">
+        <span class="err" id="e-code"></span>
+      </div>
+      <div class="formfoot">
+        <button class="primary" type="submit" id="tc-btn">Open the board</button>
+        <span id="tc-msg" role="status"></span>
+      </div>
+    </form>
   </section>
 
   <div id="banner" class="banner" role="alert" hidden></div>

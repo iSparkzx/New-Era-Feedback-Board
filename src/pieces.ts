@@ -33,7 +33,7 @@ export function statusControl(item: Item, idPrefix: string, afterMove?: () => vo
         banner('');
       } catch (err) {
         sel.value = s;
-        banner(friendly(err, 'Only board admins can move items.', 'Could not move that item. Try again.'));
+        banner(friendly(err, 'Turn on admin tools to move items.', 'Could not move that item. Try again.'));
       }
       sel.disabled = false;
       requestRender();

@@ -65,11 +65,6 @@ pub fn full_name(first: &str, last: &str) -> String {
     text::full_name(first, last)
 }
 
-#[wasm_bindgen(js_name = looksLikeEmail)]
-pub fn looks_like_email(raw: &str) -> bool {
-    text::looks_like_email(raw)
-}
-
 #[wasm_bindgen(js_name = safeHref)]
 pub fn safe_href(raw: &str) -> Option<String> {
     text::safe_href(raw)
