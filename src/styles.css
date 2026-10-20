@@ -224,3 +224,6 @@ input[type=email] {
 }
 input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--danger); }
 .thumb.unavailable { font-size: 12px; color: var(--muted); }
+/* Live countdown: sized to fit one line on desktop; a number never wraps away from its unit. */
+.countdown .cd-main { font-size: clamp(20px, 3.4vw, 27px); font-weight: 700; }
+.countdown .cd-part { white-space: nowrap; }

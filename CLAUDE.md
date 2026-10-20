@@ -65,7 +65,7 @@ Wrong codes are rate-limited in the database (10 per session or 200 overall per 
 ## Page behavior to keep (from the prototype)
 
 - First visit on a device shows only the "Enter the team code" screen. After that the board opens directly. "Admin tools" in the header asks for the admin code; "Turn off" ends admin mode.
-- Countdown banner at the top: "Launching in X days Y hours", counting to Nov 7, 2026. After that it reads "Launched".
+- Countdown banner at the top: "New Era Launching in X days Y hours Z minutes W seconds", live every second, counting to Nov 7, 2026. After that it reads "New Era Launched". (Changed from "Launching in X days Y hours" at Carlos's request, Oct 20, 2026.)
 - Ten count tiles, one per section. Clicking a tile shows only that section; clicking again shows all.
 - Search box plus Department and Type filters.
 - Items grouped under section headings, newest first inside each section. Cards show the ref (NE-01), type, department, status, 3-line description preview, link, small screenshot thumbnails, name, and date.
