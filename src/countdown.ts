@@ -4,24 +4,29 @@
 import { countdown } from './core';
 import { $, el } from './dom';
 
-/** "17 days" as one unbreakable piece; minutes and seconds use two digits so the line doesn't shift. */
+/** One number with its unit, e.g. "17 days"; hours, minutes, and seconds use two digits. */
 function part(n: number, one: string, twoDigits: boolean): HTMLElement {
   const span = el('span', 'cd-part');
-  span.append(el('b', null, twoDigits ? String(n).padStart(2, '0') : String(n)), n === 1 ? ` ${one}` : ` ${one}s`);
+  span.append(
+    el('span', 'cd-n', twoDigits ? String(n).padStart(2, '0') : String(n)),
+    ' ', // the flex gap does the visual spacing; this space is for copying and screen readers
+    el('span', 'cd-u', n === 1 ? one : `${one}s`),
+  );
   return span;
 }
 
 function tick(): boolean {
   const c = countdown(Date.now());
-  const main = $('cdMain');
+  const time = $('cdTime');
   if (c.launched) {
-    main.textContent = 'New Era Launched';
+    $('cdLead').textContent = 'New Era';
+    time.replaceChildren(el('span', 'cd-done', 'Launched'));
     return false;
   }
-  main.textContent = 'New Era Launching in ';
-  main.append(
+  // Spaces between parts keep the sentence readable when copied or read aloud.
+  time.replaceChildren(
     part(c.days, 'day', false), ' ',
-    part(c.hours, 'hour', false), ' ',
+    part(c.hours, 'hour', true), ' ',
     part(c.minutes, 'minute', true), ' ',
     part(c.seconds, 'second', true),
   );

@@ -160,11 +160,7 @@ select.status { border: 1px solid var(--c); padding: 3px 8px; width: auto; max-w
 .more { font-size: 13px; color: var(--thread); font-weight: 600; }
 
 /* Countdown */
-.countdown { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; background: var(--thread); color: var(--thread-ink); border-radius: 10px; padding: 14px 18px; }
-.countdown .cd-lbl { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; opacity: .85; }
-.countdown .cd-main { font-family: var(--f-display); font-weight: 800; font-size: clamp(22px, 4vw, 30px); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
-.countdown .cd-main b { font-weight: 800; }
-.countdown .cd-date { margin-left: auto; font-size: 14px; opacity: .85; }
+/* Countdown: styled as an embroidered patch (see "Countdown patch" at the end). */
 
 /* Drawer */
 #scrim { position: fixed; inset: 0; background: var(--overlay); opacity: .55; z-index: 30; }
@@ -224,6 +220,68 @@ input[type=email] {
 }
 input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--danger); }
 .thumb.unavailable { font-size: 12px; color: var(--muted); }
-/* Live countdown: sized to fit one line on desktop; a number never wraps away from its unit. */
-.countdown .cd-main { font-size: clamp(20px, 3.4vw, 27px); font-weight: 700; }
-.countdown .cd-part { white-space: nowrap; }
+/* ---------- Countdown patch ----------
+   An embroidered patch: twill-weave field, darker merrowed rim, a running
+   stitch just inside the edge, and wide heavy figures like patch lettering. */
+:root {
+  --patch-field: #1f4e8c;
+  --patch-rim: #15396b;
+  --patch-stitch: #9dbbe5;
+  --patch-ink: #ffffff;
+  --patch-soft: #c9daf2;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --patch-field: #172a4b; --patch-rim: #0d1a31; --patch-stitch: #5c8dd6; --patch-ink: #f1f6fd; --patch-soft: #a3bde3;
+  }
+}
+:root[data-theme="dark"] {
+  --patch-field: #172a4b; --patch-rim: #0d1a31; --patch-stitch: #5c8dd6; --patch-ink: #f1f6fd; --patch-soft: #a3bde3;
+}
+
+.countdown {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "lead date" "time time";
+  align-items: baseline;
+  gap: 10px 24px;
+  padding: 24px 30px 26px;
+  border: 4px solid var(--patch-rim);
+  border-radius: 20px;
+  color: var(--patch-ink);
+  background-color: var(--patch-field);
+  /* Twill weave: faint diagonal ribs, like the backing fabric of a patch. */
+  background-image: repeating-linear-gradient(135deg, rgb(255 255 255 / .05) 0 1.5px, transparent 1.5px 5px);
+}
+.countdown::before {
+  /* Running stitch just inside the edge. */
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 2px dashed var(--patch-stitch);
+  border-radius: 13px;
+  pointer-events: none;
+}
+.countdown p { margin: 0; }
+.cd-lead { grid-area: lead; font: 700 clamp(17px, 2.2vw, 21px)/1.2 var(--f-display); color: var(--patch-soft); }
+.cd-date { grid-area: date; font-size: 14px; color: var(--patch-soft); text-align: right; }
+.cd-time { grid-area: time; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 26px; }
+.cd-part { display: inline-flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+.cd-n {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-stretch: 125%;
+  font-size: clamp(38px, 7.2vw, 74px);
+  line-height: 1;
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--patch-ink);
+}
+.cd-u { font: 600 clamp(15px, 1.7vw, 18px)/1 var(--f-body); color: var(--patch-soft); }
+.cd-done { font: 800 clamp(34px, 6.4vw, 58px)/1.05 var(--f-display); font-stretch: 125%; color: var(--patch-ink); }
+@media (max-width: 640px) {
+  .countdown { grid-template-columns: minmax(0, 1fr); grid-template-areas: "lead" "time" "date"; padding: 22px 22px 24px; }
+  .cd-date { text-align: left; }
+  .cd-time { gap: 6px 20px; }
+}

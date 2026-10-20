@@ -8,7 +8,7 @@
 <title>New Era Feedback Board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,600..800&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap">
 </head>
 <body>
 <div class="wrap">
@@ -55,10 +55,11 @@
 
   <!-- Signed in and allowed -->
   <div id="board" class="board" hidden>
-    <div class="countdown" id="countdown" role="timer" aria-live="off">
-      <span class="cd-main" id="cdMain">New Era Launching in</span>
-      <span class="cd-date">Saturday, Nov 7, 2026</span>
-    </div>
+    <section class="countdown" id="countdown" aria-label="Time until the New Era launch">
+      <p class="cd-lead" id="cdLead">New Era Launching in</p>
+      <p class="cd-time" id="cdTime" role="timer" aria-live="off"></p>
+      <p class="cd-date">Saturday, November 7, 2026, at midnight Eastern</p>
+    </section>
 
     <div class="counts" id="counts" role="group" aria-label="Show one section"></div>
 
