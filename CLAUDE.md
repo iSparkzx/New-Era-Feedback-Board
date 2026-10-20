@@ -1,0 +1,92 @@
+# New Era Feedback Board
+
+Internal board where World Emblem team leads submit feedback, bugs, and process issues about the New Era website before and after its launch on **Saturday, Nov 7, 2026**. The board owner (Carlos Mitchell) and other board admins sort each item into a status section.
+
+Read `PLAN.md` for the build order. This file is the standing rules. (The repo is public: `PLAN.md`, `reference/`, `supabase/seed.sql`, and `data/` are kept locally and ignored by git. Never commit them.)
+
+## Stack
+
+- Front end: Vite + TypeScript, no UI framework. One page.
+- Board logic: Rust in `crates/board-core` (validation, filters, grouping, ref format, copy-as-text, countdown), compiled to WebAssembly with `wasm-pack` into `src/wasm/` (generated, not committed) and called only through `src/core.ts`. TypeScript does the DOM and Supabase calls. Form rules exist in both `form.rs` and `schema.sql`; keep them in sync (the database is the one that enforces).
+- Supabase setup: Rust CLI in `crates/provision` using the Supabase Management API. It reads the personal access token from `SUPABASE_ACCESS_TOKEN` or `~/.supabase/access-token` and never prints it. The database password goes to `~/.supabase/<ref>.db-password`, outside the repo.
+- Data, sign-in, file storage: Supabase (Postgres, Auth, Storage, Realtime) via `@supabase/supabase-js` v2.
+- Hosting: GitHub Pages, deployed by a GitHub Actions workflow on push to `main`.
+- `reference/board-current.html` is the working prototype from claude.ai. Match its behavior and look. Do not copy its `claude.use(...)` calls; those only exist on claude.ai. Replace them with Supabase calls.
+
+## Hard rules
+
+1. **Never commit secrets.** Only the Supabase project URL and the public anon key go in the front end, read from `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. The service role key never appears in this repo, in Actions logs, or in front-end code.
+2. **Access control lives in the database.** Row level security in `supabase/schema.sql` decides who reads, submits, moves, and deletes. The UI only hides controls; it never enforces. Any new table gets RLS on day one.
+3. **Follow the spec exactly.** Do not add, rename, or reorder fields, options, or statuses unless Carlos asks. If something is unclear, stop and ask.
+4. **Statuses come from the `statuses` table**, ordered by `sort_order`. Do not hard-code the list in the front end.
+5. **Treat all user text as untrusted.** Render with `textContent`, never `innerHTML`. Only render links that start with `http://` or `https://`.
+6. **Plain wording in the UI.** Short, direct labels. No jargon.
+
+## The form (exact fields)
+
+| Field | Control | Required | Values / rules |
+|---|---|---|---|
+| First name | text | yes | 1 to 60 characters |
+| Last name | text | yes | 1 to 60 characters |
+| Department | dropdown | yes | Marketing, Sales, Customer Service |
+| Type | dropdown | yes | Feedback, Bug, Process |
+| Link to the page | text (URL) | no (see PLAN decision D4) | must start with http:// or https:// |
+| Description | textarea | yes | 5 to 4000 characters |
+| Screenshots | file upload | no | up to 4 images; PNG, JPG, GIF, WebP; 20 MB each; choose, drag, or paste |
+
+New submissions always start in **New**. Remember first name, last name, and department in `localStorage` for the next submission.
+
+## Status sections (in order)
+
+1. New
+2. In Review
+3. Assigned: Carlos Mitchell
+4. Assigned: Corey Frons
+5. Assigned: Pierre Colorado
+6. Sent to IT
+7. Sent to Hanson
+8. Disqualified
+9. Post Launch Enhancement
+10. Done
+
+Every item shows under exactly one section. Moving an item moves it to that section for everyone, live.
+
+## Who can do what
+
+| Person | See items | Submit | Move between sections | Delete |
+|---|---|---|---|---|
+| Signed-in user with an allowed email domain (`allowed_domains`) | yes | yes | no | no |
+| Board admin (email in `admins`) | yes | yes | yes | yes |
+| Anyone else | no | no | no | no |
+
+## Page behavior to keep (from the prototype)
+
+- Countdown banner at the top: "Launching in X days Y hours", counting to Nov 7, 2026. After that it reads "Launched".
+- Ten count tiles, one per section. Clicking a tile shows only that section; clicking again shows all.
+- Search box plus Department and Type filters.
+- Items grouped under section headings, newest first inside each section. Cards show the ref (NE-01), type, department, status, 3-line description preview, link, small screenshot thumbnails, name, and date.
+- Clicking a card opens a side drawer with all details: full description, submitter, department, type, status, link, submitted date, source (Teams import or board), last moved, full-width screenshots. Admins can move and delete from the drawer. Close with button, click outside, or Esc.
+- Screenshot thumbnails open a full-size lightbox.
+- "Copy shown items as text" button, grouped by section.
+- Light and dark themes, works at phone width.
+
+## Data model (see `supabase/schema.sql`)
+
+- `items`: one row per submission. `ref_num` is shown as `NE-` plus two digits minimum (NE-01, NE-17, NE-104). Numbers can skip if an insert fails; that is normal.
+- `statuses`: the ten sections.
+- `status_events`: written by a trigger every time `items.status` changes.
+- `admins`, `allowed_domains`: managed in the Supabase dashboard.
+- Storage bucket `screenshots` (private). Object path: `<user id>/<random>.<ext>`. Show images with signed URLs.
+
+## Commands
+
+Needs Node 22+, Rust stable with the `wasm32-unknown-unknown` target, and `wasm-pack` (`cargo install wasm-pack`).
+
+- `npm install`
+- `npm run dev` (local at http://localhost:5173/New-Era-Feedback-Board/, needs `.env.local` with the two `VITE_` values)
+- `npm run build` (builds the Wasm core, type-checks, then builds with Vite)
+- `npm test` (Rust unit tests for the core and the setup tool)
+- `npm run check-secrets` (fails if a secret key or access token is in tracked files or `dist/`)
+- `npm run provision -- up` (create or reuse the Supabase project, apply SQL, configure sign-in, write `.env.local`; add `--github-secrets` to set the Actions secrets)
+- `npm run provision -- sql -c "…"` or `npm run provision -- sql file.sql` (run SQL on the project, e.g. to add admins)
+- Deploy: push to `main`; the Actions workflow tests, builds, checks for secrets, and publishes to GitHub Pages.

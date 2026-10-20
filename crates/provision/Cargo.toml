@@ -1,0 +1,11 @@
+[package]
+name = "provision"
+version = "0.1.0"
+description = "Creates and configures the Supabase project for the New Era Feedback Board"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+getrandom = "0.3"
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+serde_json = "1"

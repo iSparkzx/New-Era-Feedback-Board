@@ -1,0 +1,23 @@
+{
+  "name": "new-era-feedback-board",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "wasm": "wasm-pack build crates/board-core --target web --release --out-dir ../../src/wasm --out-name board_core",
+    "dev": "npm run wasm && vite",
+    "build": "npm run wasm && tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc",
+    "test": "cargo test --workspace",
+    "check-secrets": "node scripts/check-secrets.mjs --git && node scripts/check-secrets.mjs dist",
+    "provision": "cargo run --quiet -p provision --"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
+  }
+}

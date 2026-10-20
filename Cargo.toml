@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+members = ["crates/board-core", "crates/provision"]
+
+[workspace.package]
+edition = "2021"
+publish = false
+
+# Keep the WebAssembly file small. (The setup tool runs as a debug build,
+# so these release settings only matter for the page.)
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.release.package.board-core]
+opt-level = "s"

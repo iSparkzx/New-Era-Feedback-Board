@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>New Era Feedback Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">World Emblem · New Era website · launch Nov 7</span>
+    <div class="titlerow">
+      <h1>New Era Feedback Board</h1>
+      <button id="toggleForm" class="primary" type="button" hidden disabled>Add feedback</button>
+    </div>
+    <p class="lede" id="lede" hidden>Log feedback, bugs, and process issues for the new site in one place. Everyone can see what has been submitted, so check the list before adding a duplicate.</p>
+    <div class="acct" id="acct" hidden><span id="whoami"></span> <button class="link" type="button" id="signOut">Sign out</button></div>
+    <hr class="stitch">
+  </header>
+
+  <!-- Signed out -->
+  <section id="signin" class="panel" hidden>
+    <div id="signinStart">
+      <h2>Sign in</h2>
+      <p class="hint">Use your World Emblem email. We'll email you a link to sign in.</p>
+      <form id="signinForm" novalidate>
+        <div class="field">
+          <label for="si-email">Work email</label>
+          <input id="si-email" type="email" autocomplete="email" inputmode="email" placeholder="name@worldemblem.com">
+          <span class="err" id="e-email"></span>
+        </div>
+        <div class="formfoot">
+          <button class="primary" type="submit" id="si-btn">Send sign-in link</button>
+          <span id="si-msg" role="status"></span>
+        </div>
+      </form>
+    </div>
+    <div id="signinSent" hidden>
+      <h2>Check your email</h2>
+      <p>We sent a sign-in link to <b id="sentTo"></b>. Open it to sign in. The link works once and expires in 1 hour.</p>
+      <p class="hint">No email after a few minutes? Check your junk folder, then try again.</p>
+      <div class="formfoot"><button type="button" id="si-again">Send another link</button></div>
+    </div>
+  </section>
+
+  <!-- Signed in, but this email can't use the board -->
+  <section id="notAllowed" class="panel" hidden>
+    <h2>This email can't use the board</h2>
+    <p><b id="naEmail"></b> isn't on the list of allowed emails. Sign out and sign in with your World Emblem email, or ask Carlos Mitchell to add you.</p>
+    <div class="formfoot"><button type="button" id="naSignOut">Sign out</button></div>
+  </section>
+
+  <div id="banner" class="banner" role="alert" hidden></div>
+
+  <!-- Signed in and allowed -->
+  <div id="board" class="board" hidden>
+    <div class="countdown" id="countdown" role="timer" aria-live="off">
+      <span class="cd-lbl">New Era launch</span>
+      <span class="cd-main" id="cdMain">Launching in <b>0</b> days <b>0</b> hours</span>
+      <span class="cd-date">Saturday, Nov 7, 2026</span>
+    </div>
+
+    <div class="counts" id="counts" role="group" aria-label="Show one section"></div>
+
+    <form id="formPanel" hidden novalidate>
+      <h2>Add feedback</h2>
+      <div class="grid2">
+        <div class="field">
+          <label for="f-first">First name</label>
+          <input id="f-first" type="text" autocomplete="given-name" maxlength="60">
+          <span class="err" id="e-first"></span>
+        </div>
+        <div class="field">
+          <label for="f-last">Last name</label>
+          <input id="f-last" type="text" autocomplete="family-name" maxlength="60">
+          <span class="err" id="e-last"></span>
+        </div>
+        <div class="field">
+          <label for="f-dept">Department</label>
+          <select id="f-dept">
+            <option value="">Choose a department</option>
+            <option>Marketing</option>
+            <option>Sales</option>
+            <option>Customer Service</option>
+          </select>
+          <span class="err" id="e-dept"></span>
+        </div>
+        <div class="field">
+          <label for="f-type">Type</label>
+          <select id="f-type">
+            <option value="">Choose a type</option>
+            <option>Feedback</option>
+            <option>Bug</option>
+            <option>Process</option>
+          </select>
+          <span class="err" id="e-type"></span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-link">Link to the page <span class="opt">(optional)</span></label>
+        <input id="f-link" type="url" inputmode="url" placeholder="Paste the link to where this happens">
+        <span class="err" id="e-link"></span>
+      </div>
+      <div class="field">
+        <label for="f-desc">Description</label>
+        <textarea id="f-desc" maxlength="4000" placeholder="What did you see, and what should it be instead?"></textarea>
+        <span class="err" id="e-desc"></span>
+      </div>
+      <div class="field" id="shotField">
+        <label for="f-shots">Screenshots <span class="opt">(optional, up to 4)</span></label>
+        <div class="drop" id="drop">
+          <input id="f-shots" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple>
+          <span class="hint">Choose files, drag them here, or paste a screenshot while this form is open.</span>
+          <div class="previews" id="previews"></div>
+        </div>
+        <span class="err" id="e-shots"></span>
+      </div>
+      <div class="formfoot">
+        <button class="primary" type="submit" id="submitBtn">Submit</button>
+        <button type="button" id="cancelBtn">Cancel</button>
+        <span id="formMsg" role="status"></span>
+      </div>
+    </form>
+
+    <div class="filters">
+      <div class="field search">
+        <label for="q">Search</label>
+        <input id="q" type="text" placeholder="Words, names, page links">
+      </div>
+      <div class="field">
+        <label for="fd">Department</label>
+        <select id="fd"><option value="">All</option><option>Marketing</option><option>Sales</option><option>Customer Service</option></select>
+      </div>
+      <div class="field">
+        <label for="ft">Type</label>
+        <select id="ft"><option value="">All</option><option>Feedback</option><option>Bug</option><option>Process</option></select>
+      </div>
+    </div>
+
+    <div class="listhead">
+      <span><span id="showing">Loading feedback…</span> <button class="link" type="button" id="showAll" hidden>Show all sections</button></span>
+      <span><button class="link" type="button" id="copyBtn">Copy shown items as text</button> <span id="copyMsg" role="status"></span></span>
+    </div>
+
+    <div id="list"></div>
+  </div>
+</div>
+
+<div id="scrim" hidden></div>
+<aside id="drawer" hidden role="dialog" aria-modal="true" aria-labelledby="dTitle">
+  <div class="dhead">
+    <span class="ref" id="dRef"></span>
+    <span class="grow"></span>
+    <button type="button" id="dClose">Close</button>
+  </div>
+  <div class="dbody" id="dBody"></div>
+  <div class="dfoot" id="dFoot"></div>
+</aside>
+
+<div id="lightbox" hidden><button type="button" id="lbClose">Close</button><img id="lbImg" alt="Screenshot"></div>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
