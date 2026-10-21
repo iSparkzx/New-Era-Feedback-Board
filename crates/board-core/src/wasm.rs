@@ -7,7 +7,7 @@ use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
 use crate::board::{self, Filter, Item, Status};
-use crate::{countdown, form, text, time};
+use crate::{comment, countdown, form, text, time};
 
 fn from_js<T: DeserializeOwned>(v: JsValue) -> Result<T, JsError> {
     serde_wasm_bindgen::from_value(v).map_err(|e| JsError::new(&e.to_string()))
@@ -38,6 +38,18 @@ pub fn copy_text(items: JsValue, statuses: JsValue, filter: JsValue) -> Result<S
 pub fn validate_form(input: JsValue) -> Result<JsValue, JsError> {
     let input: form::FormInput = from_js(input)?;
     to_js(&form::validate(&input))
+}
+
+#[wasm_bindgen(js_name = validateComment)]
+pub fn validate_comment(input: JsValue) -> Result<JsValue, JsError> {
+    let input: comment::CommentInput = from_js(input)?;
+    to_js(&comment::validate(&input))
+}
+
+/// The item types, in form order.
+#[wasm_bindgen(js_name = itemTypes)]
+pub fn item_types() -> Result<JsValue, JsError> {
+    to_js(&form::TYPES)
 }
 
 #[wasm_bindgen(js_name = checkScreenshot)]

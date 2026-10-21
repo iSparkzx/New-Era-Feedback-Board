@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 
 pub const DEPARTMENTS: [&str; 3] = ["Marketing", "Sales", "Customer Service"];
-pub const TYPES: [&str; 3] = ["Feedback", "Bug", "Process"];
+pub const TYPES: [&str; 4] = ["Feedback", "Bug", "Process", "Question"];
 
 pub const MAX_SHOTS: u32 = 4;
 pub const MAX_SHOT_BYTES: f64 = 20.0 * 1024.0 * 1024.0;
@@ -190,10 +190,17 @@ mod tests {
     fn options_must_match_exactly() {
         let mut f = good();
         f.department = "sales".into();
-        f.kind = "Question".into();
+        f.kind = "question".into();
         let c = validate(&f);
         assert!(c.errors.dept.is_some());
         assert!(c.errors.kind.is_some());
+    }
+
+    #[test]
+    fn question_is_a_type() {
+        let mut f = good();
+        f.kind = "Question".into();
+        assert!(validate(&f).ok);
     }
 
     #[test]

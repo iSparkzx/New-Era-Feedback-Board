@@ -70,6 +70,28 @@ export interface Checked {
   clean?: CleanItem;
 }
 
+/** A row of the `comments` table. (Not named Comment: that is a DOM type.) */
+export interface ItemComment {
+  id: string;
+  item_id: string;
+  author: string;
+  body: string;
+  by_admin: boolean;
+  created_at: string;
+  created_by: string | null;
+}
+
+export interface CommentInput {
+  author: string;
+  body: string;
+}
+
+export interface CommentChecked {
+  ok: boolean;
+  errors: Partial<Record<keyof CommentInput, string>>;
+  clean?: CommentInput;
+}
+
 export interface CountdownInfo {
   launched: boolean;
   days: number;

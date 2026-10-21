@@ -16,8 +16,8 @@ const FIELDS: { key: FormField; input: string }[] = [
   { key: 'desc', input: 'f-desc' },
 ];
 
-const LS_FIRST = 'nefb-first';
-const LS_LAST = 'nefb-last';
+export const LS_FIRST = 'nefb-first';
+export const LS_LAST = 'nefb-last';
 const LS_DEPT = 'nefb-dept';
 
 interface Pending {

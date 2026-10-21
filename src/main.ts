@@ -140,6 +140,10 @@ async function boot(): Promise<void> {
     banner('');
     if (st.loaded) resync().then(render, () => {});
   });
+  // The live connection can drop changes without saying so, so catch up whenever the tab comes back.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && st.loaded) resync().then(render, () => {});
+  });
   setInterval(refreshShots, 5 * 60 * 1000);
 
   // Supabase asks that no Supabase calls run inside this callback, so defer the work.

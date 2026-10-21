@@ -5,6 +5,7 @@
 //! Nothing here touches the network or the page.
 
 pub mod board;
+pub mod comment;
 pub mod countdown;
 pub mod form;
 pub mod text;

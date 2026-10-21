@@ -220,6 +220,33 @@ input[type=email] {
 }
 input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--danger); }
 .thumb.unavailable { font-size: 12px; color: var(--muted); }
+
+/* ---------- Questions and comments ---------- */
+:root { --q: #0b6584; --q-bg: #def2f8; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --q: #79cde6; --q-bg: #11303b; }
+}
+:root[data-theme="dark"] { --q: #79cde6; --q-bg: #11303b; }
+.chip.t-Question { background: var(--q-bg); color: var(--q); }
+.cright { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.ccount { font-size: 13px; color: var(--muted); }
+.dmain { display: flex; flex-direction: column; gap: 18px; }
+#cHead:focus { outline: none; }
+.dl select.typesel { width: auto; max-width: 100%; padding: 4px 8px; font-size: 15px; }
+.clist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+/* Admin replies carry the board's thread color, like a stitched edge. */
+.cmt { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; background: var(--bg); }
+.cmt.by-admin { border-left: 3px solid var(--thread); background: var(--thread-soft); }
+.chead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font-size: 13px; color: var(--muted); }
+.chead b { font-size: 15px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.ctag { font-weight: 600; color: var(--thread); }
+.chead .cdel { margin-left: auto; display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chead .cdel button:not(.link) { padding: 4px 10px; font-size: 14px; }
+.cbody { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cform { display: flex; flex-direction: column; gap: 10px; padding-top: 6px; }
+.cform textarea { min-height: 88px; }
+.crow { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.crow .field { flex: 1 1 220px; }
 /* ---------- Countdown patch ----------
    An embroidered patch: twill-weave field, darker merrowed rim, a running
    stitch just inside the edge, and wide heavy figures like patch lettering. */

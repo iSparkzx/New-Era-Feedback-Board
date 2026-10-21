@@ -11,7 +11,7 @@ Internal board where World Emblem team leads log feedback, bugs, and process iss
 |---|---|---|
 | Page | `index.html`, `src/*.ts`, `src/styles.css` | DOM, team code, Supabase calls, live updates |
 | Board logic | `crates/board-core` (Rust → WebAssembly) | Form rules, filters, grouping, ref numbers, copy-as-text, countdown |
-| Database rules | `supabase/schema.sql`, `supabase/migrations/` | Tables, row level security, triggers, screenshot bucket, team and admin codes |
+| Database rules | `supabase/schema.sql`, `supabase/migrations/` | Tables, row level security, triggers, screenshot bucket, team and admin codes, comments |
 | Setup tool | `crates/provision` (Rust CLI) | Creates and configures the Supabase project through the Management API |
 | Deploy | `.github/workflows/deploy.yml` | Test, build, check for secrets, publish to Pages on every push to `main` |
 

@@ -18,7 +18,7 @@
       <h1>New Era Feedback Board</h1>
       <button id="toggleForm" class="primary" type="button" hidden disabled>Add feedback</button>
     </div>
-    <p class="lede" id="lede" hidden>Log feedback, bugs, and process issues for the new site in one place. Everyone can see what has been submitted, so check the list before adding a duplicate.</p>
+    <p class="lede" id="lede" hidden>Log feedback, bugs, process issues, and questions for the new site in one place. Everyone can see what has been submitted, so check the list before adding a duplicate.</p>
     <div class="acct" id="acct" hidden><span id="adminState"></span> <button class="link" type="button" id="adminToggle">Admin tools</button></div>
     <form id="adminForm" class="panel" hidden novalidate>
       <div class="field">
@@ -93,6 +93,7 @@
             <option>Feedback</option>
             <option>Bug</option>
             <option>Process</option>
+            <option>Question</option>
           </select>
           <span class="err" id="e-type"></span>
         </div>
@@ -134,7 +135,7 @@
       </div>
       <div class="field">
         <label for="ft">Type</label>
-        <select id="ft"><option value="">All</option><option>Feedback</option><option>Bug</option><option>Process</option></select>
+        <select id="ft"><option value="">All</option><option>Feedback</option><option>Bug</option><option>Process</option><option>Question</option></select>
       </div>
     </div>
 
@@ -154,7 +155,31 @@
     <span class="grow"></span>
     <button type="button" id="dClose">Close</button>
   </div>
-  <div class="dbody" id="dBody"></div>
+  <div class="dbody" id="dBody">
+    <div class="dmain" id="dMain"></div>
+    <!-- Kept outside dMain so live updates redraw the list without touching a comment being typed. -->
+    <section class="dsec" aria-labelledby="cHead">
+      <h3 id="cHead" tabindex="-1">Comments</h3>
+      <p class="hint" id="cNone">No comments yet.</p>
+      <ol class="clist" id="cList"></ol>
+      <form id="cForm" class="cform" novalidate>
+        <div class="field">
+          <label for="c-body">Add a comment</label>
+          <textarea id="c-body" maxlength="4000" placeholder="Answer a question or add details"></textarea>
+          <span class="err" id="e-cbody"></span>
+        </div>
+        <div class="crow">
+          <div class="field">
+            <label for="c-author">Your name</label>
+            <input id="c-author" type="text" autocomplete="name" maxlength="80">
+            <span class="err" id="e-cauthor"></span>
+          </div>
+          <button class="primary" type="submit" id="c-btn">Add comment</button>
+        </div>
+        <span class="hint" id="c-msg" role="status"></span>
+      </form>
+    </section>
+  </div>
   <div class="dfoot" id="dFoot"></div>
 </aside>
 

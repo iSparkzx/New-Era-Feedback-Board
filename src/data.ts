@@ -7,9 +7,11 @@ import { screenshotExt } from './core';
 import { NotAllowed } from './errors';
 import { st } from './state';
 import { SCREENSHOTS, sb } from './supabase';
-import type { CleanItem, Item, Status } from './types';
+import type { CleanItem, CommentInput, Item, ItemComment, Status } from './types';
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+
+const COMMENT_COLS = 'id,item_id,author,body,by_admin,created_at,created_by';
 
 /** Normalizes a row from the REST API or a live update into an Item. */
 export function toItem(row: Record<string, unknown>): Item {
@@ -30,6 +32,21 @@ export function toItem(row: Record<string, unknown>): Item {
   };
 }
 
+/** Normalizes a row from the REST API or a live update into an ItemComment. */
+export function toComment(row: Record<string, unknown>): ItemComment {
+  return {
+    id: str(row.id),
+    item_id: str(row.item_id),
+    author: str(row.author),
+    body: str(row.body),
+    by_admin: row.by_admin === true,
+    created_at: str(row.created_at),
+    created_by: typeof row.created_by === 'string' ? row.created_by : null,
+  };
+}
+
+const byId = <T extends { id: string }>(rows: T[]): Map<string, T> => new Map(rows.map((r) => [r.id, r]));
+
 /** True if the signed-in email is on an allowed domain. */
 export async function checkAllowed(): Promise<boolean> {
   const { data, error } = await sb().rpc('is_allowed_user');
@@ -39,36 +56,39 @@ export async function checkAllowed(): Promise<boolean> {
 
 export async function loadAll(): Promise<void> {
   const client = sb();
-  const [statuses, items, admin] = await Promise.all([
+  const [statuses, items, comments, admin] = await Promise.all([
     client.from('statuses').select('key,label,color').order('sort_order'),
     client.from('items').select('*').order('created_at', { ascending: false }),
+    client.from('comments').select(COMMENT_COLS).order('created_at'),
     client.rpc('is_admin'),
   ]);
   if (statuses.error) throw statuses.error;
   if (items.error) throw items.error;
+  if (comments.error) throw comments.error;
   st.statuses = (statuses.data ?? []) as Status[];
-  st.items = new Map((items.data ?? []).map((r) => {
-    const it = toItem(r);
-    return [it.id, it];
-  }));
+  st.items = byId((items.data ?? []).map(toItem));
+  st.comments = byId((comments.data ?? []).map(toComment));
   st.canEdit = admin.data === true;
   st.loaded = true;
 }
 
-async function reloadItems(): Promise<void> {
-  const { data, error } = await sb().from('items').select('*').order('created_at', { ascending: false });
-  if (error) throw error;
-  st.items = new Map((data ?? []).map((r) => {
-    const it = toItem(r);
-    return [it.id, it];
-  }));
+async function reload(): Promise<void> {
+  const client = sb();
+  const [items, comments] = await Promise.all([
+    client.from('items').select('*').order('created_at', { ascending: false }),
+    client.from('comments').select(COMMENT_COLS).order('created_at'),
+  ]);
+  if (items.error) throw items.error;
+  if (comments.error) throw comments.error;
+  st.items = byId((items.data ?? []).map(toItem));
+  st.comments = byId((comments.data ?? []).map(toComment));
 }
 
 let channel: RealtimeChannel | null = null;
 
 /**
- * Subscribes once to changes on items. `onChange` runs after local state is
- * updated; `onTrouble` gets a message when updates stop (or '' when they resume).
+ * Subscribes once to changes on items and comments. `onChange` runs after local
+ * state is updated; `onTrouble` gets a message when updates stop (or '' when they resume).
  */
 export function subscribe(onChange: () => void, onTrouble: (msg: string) => void): void {
   unsubscribe();
@@ -78,7 +98,7 @@ export function subscribe(onChange: () => void, onTrouble: (msg: string) => void
     .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, (payload) => {
       if (payload.eventType === 'DELETE') {
         const id = str((payload.old as Record<string, unknown>).id);
-        if (id) st.items.delete(id);
+        if (id) dropItem(id);
       } else {
         const row = payload.new as Record<string, unknown>;
         const prev = st.items.get(str(row.id));
@@ -88,10 +108,19 @@ export function subscribe(onChange: () => void, onTrouble: (msg: string) => void
       }
       onChange();
     })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, (payload) => {
+      if (payload.eventType === 'DELETE') {
+        st.comments.delete(str((payload.old as Record<string, unknown>).id));
+      } else {
+        const c = toComment(payload.new as Record<string, unknown>);
+        if (c.id) st.comments.set(c.id, c);
+      }
+      onChange();
+    })
     .subscribe((status) => {
       if (status === 'SUBSCRIBED') {
         // Catch anything that changed before the subscription started or while disconnected.
-        if (st.loaded) reloadItems().then(onChange, () => {});
+        if (st.loaded) reload().then(onChange, () => {});
         if (broken) {
           broken = false;
           onTrouble('');
@@ -111,25 +140,56 @@ export function unsubscribe(): void {
 }
 
 /** Resync after coming back online. */
-export const resync = reloadItems;
+export const resync = reload;
 
-export async function moveItem(id: string, status: string): Promise<void> {
-  const { data, error } = await sb().from('items').update({ status }).eq('id', id).select();
+/** Forgets an item and its comments (the database deletes the comments with it). */
+function dropItem(id: string): void {
+  st.items.delete(id);
+  for (const c of st.comments.values()) if (c.item_id === id) st.comments.delete(c.id);
+}
+
+/** Admins only (row level security): change an item's status or type. */
+async function updateItem(id: string, change: Partial<Pick<Item, 'status' | 'type'>>): Promise<void> {
+  const { data, error } = await sb().from('items').update(change).eq('id', id).select();
   if (error) throw error;
   if (!data?.length) throw new NotAllowed();
   const it = toItem(data[0]);
   st.items.set(it.id, it);
 }
 
+export const moveItem = (id: string, status: string): Promise<void> => updateItem(id, { status });
+
+export const changeType = (id: string, type: string): Promise<void> => updateItem(id, { type });
+
 export async function deleteItem(item: Item): Promise<void> {
   const { data, error } = await sb().from('items').delete().eq('id', item.id).select('id');
   if (error) throw error;
   if (!data?.length) throw new NotAllowed();
-  st.items.delete(item.id);
+  dropItem(item.id);
   if (item.screenshots.length) {
     const { error: rmError } = await sb().storage.from(SCREENSHOTS).remove(item.screenshots);
     if (rmError) console.error('Item deleted, but its screenshots were not', rmError);
   }
+}
+
+/** The database records who wrote it, and marks it as an admin's if admin tools are on. */
+export async function addComment(itemId: string, clean: CommentInput): Promise<void> {
+  const { data, error } = await sb()
+    .from('comments')
+    .insert({ item_id: itemId, ...clean })
+    .select(COMMENT_COLS)
+    .single();
+  if (error) throw error;
+  const c = toComment(data);
+  st.comments.set(c.id, c);
+}
+
+/** Works on your own comments, or on any comment with admin tools on. */
+export async function deleteComment(id: string): Promise<void> {
+  const { data, error } = await sb().from('comments').delete().eq('id', id).select('id');
+  if (error) throw error;
+  if (!data?.length) throw new NotAllowed();
+  st.comments.delete(id);
 }
 
 /**

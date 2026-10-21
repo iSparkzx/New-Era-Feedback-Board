@@ -6,7 +6,7 @@ import { $, el, fmtDate, paint } from './dom';
 import { openDrawer, refreshDrawer } from './drawer';
 import { linkNode, shotsNode, statusControl } from './pieces';
 import { ensureSigned } from './screenshots';
-import { itemList, st } from './state';
+import { commentCounts, itemList, st } from './state';
 import type { Item, View } from './types';
 
 export function render(): void {
@@ -50,6 +50,7 @@ function renderList(view: View): void {
     list.appendChild(el('div', 'empty', 'No feedback yet. Use "Add feedback" to log the first item.'));
     return;
   }
+  const counts = commentCounts();
   for (const s of view.sections) {
     const sec = el('section', `sec${s.ids.length ? '' : ' is-empty'}`);
     paint(sec, s.color);
@@ -61,7 +62,7 @@ function renderList(view: View): void {
       const ol = el('ol');
       for (const id of s.ids) {
         const it = st.items.get(id);
-        if (it) ol.appendChild(buildCard(it));
+        if (it) ol.appendChild(buildCard(it, counts.get(id) ?? 0));
       }
       sec.appendChild(ol);
     }
@@ -70,13 +71,14 @@ function renderList(view: View): void {
   if (!view.shown) list.appendChild(el('div', 'empty', 'No items match these filters.'));
 }
 
-function buildCard(d: Item): HTMLLIElement {
+function buildCard(d: Item, comments: number): HTMLLIElement {
   const ref = formatRef(d.ref_num);
   const name = fullName(d.first_name, d.last_name);
+  const commentText = comments ? `${comments} ${comments === 1 ? 'comment' : 'comments'}` : '';
   const li = el('li', `card${d.type === 'Bug' ? ' bug' : ''}`);
   li.tabIndex = 0;
   li.dataset.id = d.id;
-  li.setAttribute('aria-label', `${ref}, ${d.type} from ${name}. Open details`);
+  li.setAttribute('aria-label', `${ref}, ${d.type} from ${name}${commentText ? `, ${commentText}` : ''}. Open details`);
 
   const meta = el('div', 'cmeta');
   meta.appendChild(el('span', 'ref', ref));
@@ -103,7 +105,10 @@ function buildCard(d: Item): HTMLLIElement {
   if (when) who.append(` · ${when}`);
   const foot = el('div', 'cfoot');
   foot.style.justifyContent = 'space-between';
-  foot.append(who, el('span', 'more', 'View details →'));
+  const right = el('span', 'cright');
+  if (commentText) right.appendChild(el('span', 'ccount', commentText));
+  right.appendChild(el('span', 'more', 'View details →'));
+  foot.append(who, right);
   li.appendChild(foot);
 
   li.addEventListener('click', (e) => {
